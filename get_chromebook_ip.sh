@@ -1,7 +1,11 @@
 #!/bin/bash
 
-# Get interface name as argument, default to eth0
-interface="${1:-eth0}"
+# Get interface name as argument, default to eth0 if only one interface is found, otherwise prompt the user.
+if [[ $(ip link show | wc -l) -eq 2 ]]; then # Check if only one interface exists (excluding loopback)
+  interface=$(ip link show | grep -oP '(?<=dev\s)\w+' | head -n 1)
+else
+  read -p "Enter the interface name for the Chrome OS connection (e.g., eth0): " interface
+fi
 
 # Function to check if an IP address is private.  Improved regex.
 is_private_ip() {
@@ -43,27 +47,17 @@ fi
 
 echo "Chrome OS IP Address: $chromeos_ip"
 
-# Get Linux VM IP address.  Assume a different interface for the VM (e.g., eth1)
-vm_interface="eth1" # Change this if your VM uses a different interface
+# Get the VM's IP address on the local network.  This assumes the VM has a connection to the local network.
+vm_ip=$(ip -4 addr show | grep "inet\b" | grep -v 127.0.0.1 | grep -v "$chromeos_ip" | awk '{print $2}' | cut -d/ -f1)
 
-# Check if the VM interface exists and is UP
-if ! check_interface "$vm_interface"; then
-  echo "Warning: Linux VM IP address check skipped because interface '$vm_interface' is not found or is DOWN."
+if [ -z "$vm_ip" ]; then
+  echo "Warning: Could not determine VM's IP address on the local network."
 else
-  # Add debugging output
-  echo "ip -4 addr show dev \"$vm_interface\" output:"
-  ip -4 addr show dev "$vm_interface"
-  linux_ip=$(ip -4 addr show dev "$vm_interface" | grep "inet\b" | grep -v 127.0.0.1 | awk '{print $2}' | cut -d/ -f1)
-
-  if [ -z "$linux_ip" ] || ! is_private_ip "$linux_ip"; then
-    echo "Warning: Could not determine Linux VM IP address for interface '$vm_interface'."
-  else
-    echo "Linux VM IP Address: $linux_ip"
-  fi
+  echo "VM IP Address (Local Network): $vm_ip"
 fi
 
 # Describe the interaction (general information)
 echo ""
 echo "Interaction between Chrome OS and Linux VM:"
-echo "The Linux VM runs in a virtual machine environment, potentially isolated from the Chrome OS network.  They communicate through a virtual network bridge or other networking configuration. Chrome OS manages network access for the VM, assigning it an IP address on the virtual network. The VM can access the internet through this virtual network, and potentially communicate with Chrome OS using network protocols (e.g., SSH, if enabled)."
-echo "Note: The Linux VM's IP address is typically only accessible from within the VM itself or from other VMs on the same virtual network. It's not directly routable on the external network."
+echo "The script is running inside the Linux VM. The VM is connected to the Chrome OS network via a virtual network interface ($interface).  The VM also has a separate connection to the local network, allowing it to communicate with other devices on that network. The Chrome OS IP address is obtained from the virtual network interface, while the VM's local network IP address is obtained separately."
+echo "Note: The Chrome OS IP address is only accessible from within the VM or other devices on the same virtual network. The VM's local network IP address is accessible from other devices on the local network."
