@@ -28,6 +28,7 @@ check_and_get_ip() {
     return
   fi
 
+  # Remove trailing colon and @ifX suffix AFTER the interface check
   interface="${interface%%:*}" # Remove trailing colon
   interface="${interface//@*/}" #Remove @ and anything after it.
 
