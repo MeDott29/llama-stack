@@ -1,20 +1,23 @@
 #!/bin/bash
 
+# Get interface name as argument, default to eth0
+interface="${1:-eth0}"
+
 # Get Chrome OS IP address.
-chromeos_ip=$(ip -4 addr show | grep "inet\b" | grep -v 127.0.0.1 | awk '{print $2}' | cut -d/ -f1)
+chromeos_ip=$(ip -4 addr show dev "$interface" | grep "inet\b" | grep -v 127.0.0.1 | awk '{print $2}' | cut -d/ -f1)
 
 if [ -z "$chromeos_ip" ]; then
-  echo "Error: Could not determine Chrome OS IP address. Check your network configuration."
+  echo "Error: Could not determine Chrome OS IP address for interface '$interface'. Check your network configuration or specify the correct interface."
   exit 1
 fi
 
 echo "Chrome OS IP Address: $chromeos_ip"
 
 # Get Linux VM IP address.
-linux_ip=$(ip -4 addr show | grep "inet\b" | grep -v 127.0.0.1 | awk '{print $2}' | cut -d/ -f1)
+linux_ip=$(ip -4 addr show dev "$interface" | grep "inet\b" | grep -v 127.0.0.1 | awk '{print $2}' | cut -d/ -f1)
 
 if [ -z "$linux_ip" ]; then
-  echo "Warning: Could not determine Linux VM IP address. Check your Linux VM network configuration."
+  echo "Warning: Could not determine Linux VM IP address for interface '$interface'. Check your Linux VM network configuration or specify the correct interface."
 else
   echo "Linux VM IP Address: $linux_ip"
 fi
