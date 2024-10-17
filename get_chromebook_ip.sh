@@ -3,12 +3,13 @@
 # Get interface name as argument, default to eth0
 interface="${1:-eth0}"
 
-# Function to check if an IP address is private
+# Function to check if an IP address is private.  Improved regex.
 is_private_ip() {
   ip="$1"
   [[ "$ip" =~ ^10\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}$ ]] || \
   [[ "$ip" =~ ^172\.(1[6-9]|2[0-9]|3[0-1])\.[0-9]{1,3}\.[0-9]{1,3}$ ]] || \
-  [[ "$ip" =~ ^192\.168\.[0-9]{1,3}\.[0-9]{1,3}$ ]]
+  [[ "$ip" =~ ^192\.168\.[0-9]{1,3}\.[0-9]{1,3}$ ]] || \
+  [[ "$ip" =~ ^127\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}$ ]] #Added loopback check
 }
 
 # Check if the interface exists
