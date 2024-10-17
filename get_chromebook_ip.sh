@@ -19,8 +19,8 @@ check_and_get_ip() {
   echo "Checking interface: $interface"
 
   # Remove trailing colon and @ifX suffix BEFORE the interface check
-  interface="${interface%%:*}" # Remove trailing colon
-  interface="${interface//@*/}" #Remove @ and anything after it.
+  local interface_short="${interface%%:*}" # Remove trailing colon
+  interface_short="${interface_short//@*/}" #Remove @ and anything after it.
 
   #Check if interface exists and is up
   if ! ip link show dev "$interface" &> /dev/null; then
