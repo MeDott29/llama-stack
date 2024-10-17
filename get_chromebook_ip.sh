@@ -19,7 +19,7 @@ check_interface() {
     return 1
   fi
   if ! ip link show dev "$interface" | grep "state UP"; then
-    echo "Warning: Interface '$interface' is DOWN."
+    echo "Warning: Interface '$interface' is DOWN. Skipping IP address retrieval."
     return 1
   fi
   return 0
@@ -48,7 +48,7 @@ vm_interface="docker0" # Change this if your VM uses a different interface
 
 # Check if the VM interface exists and is UP
 if ! check_interface "$vm_interface"; then
-  echo "Warning: Skipping Linux VM IP address check because interface '$vm_interface' is not found or is DOWN."
+  echo "Warning: Linux VM IP address check skipped because interface '$vm_interface' is not found or is DOWN."
 else
   # Add debugging output
   echo "ip -4 addr show dev \"$vm_interface\" output:"
