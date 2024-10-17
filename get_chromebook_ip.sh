@@ -32,13 +32,15 @@ check_interface() {
 # Function to check and get IP for a given interface
 check_and_get_ip() {
   local interface="$1"
+  echo "Checking interface: $interface"
+  interface="${interface%%:*}" # Remove trailing colon
+  interface="${interface//@*/}" #Remove @ and anything after it.
+
+  #Check if interface exists and is up *before* attempting to get the IP address
   if ! check_interface "$interface"; then
     return
   fi
 
-  echo "Checking interface: $interface"
-  interface="${interface%%:*}" # Remove trailing colon
-  interface="${interface//@*/}" #Remove @ and anything after it.
   ip -4 addr show dev "$interface"
   chromeos_ip=$(ip -4 addr show dev "$interface" | grep "inet\b" | grep -v 127.0.0.1 | awk '{print $2}' | cut -d/ -f1)
 
@@ -93,10 +95,7 @@ fi
 
 # Check Chrome OS interface (if a single interface was selected)
 if [[ -n "$interface" ]]; then
-  if ! check_interface "$interface"; then
-    exit 1
-  fi
-  check_and_get_ip "$interface"
+  check_and_get_ip "$interface" # Moved check_interface call here
 fi
 
 
