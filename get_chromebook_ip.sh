@@ -11,8 +11,15 @@ is_private_ip() {
   [[ "$ip" =~ ^192\.168\.[0-9]{1,3}\.[0-9]{1,3}$ ]]
 }
 
+# Check if the interface exists
+if ! ip link show dev "$interface" &> /dev/null; then
+  echo "Error: Interface '$interface' not found. Check your network configuration or specify the correct interface."
+  exit 1
+fi
 
-# Get Chrome OS IP address.
+# Get Chrome OS IP address.  Add debugging output
+echo "ip -4 addr show dev \"$interface\" output:"
+ip -4 addr show dev "$interface"
 chromeos_ip=$(ip -4 addr show dev "$interface" | grep "inet\b" | grep -v 127.0.0.1 | awk '{print $2}' | cut -d/ -f1)
 
 if [ -z "$chromeos_ip" ] || ! is_private_ip "$chromeos_ip"; then
@@ -24,12 +31,21 @@ echo "Chrome OS IP Address: $chromeos_ip"
 
 # Get Linux VM IP address.  Assume a different interface for the VM (e.g., docker0)
 vm_interface="docker0" # Change this if your VM uses a different interface
-linux_ip=$(ip -4 addr show dev "$vm_interface" | grep "inet\b" | grep -v 127.0.0.1 | awk '{print $2}' | cut -d/ -f1)
 
-if [ -z "$linux_ip" ] || ! is_private_ip "$linux_ip"; then
-  echo "Warning: Could not determine Linux VM IP address for interface '$vm_interface'. Check your Linux VM network configuration or specify the correct interface."
+# Check if the interface exists
+if ! ip link show dev "$vm_interface" &> /dev/null; then
+  echo "Warning: Interface '$vm_interface' not found. Check your Linux VM network configuration or specify the correct interface."
 else
-  echo "Linux VM IP Address: $linux_ip"
+  # Add debugging output
+  echo "ip -4 addr show dev \"$vm_interface\" output:"
+  ip -4 addr show dev "$vm_interface"
+  linux_ip=$(ip -4 addr show dev "$vm_interface" | grep "inet\b" | grep -v 127.0.0.1 | awk '{print $2}' | cut -d/ -f1)
+
+  if [ -z "$linux_ip" ] || ! is_private_ip "$linux_ip"; then
+    echo "Warning: Could not determine Linux VM IP address for interface '$vm_interface'. Check your Linux VM network configuration or specify the correct interface."
+  else
+    echo "Linux VM IP Address: $linux_ip"
+  fi
 fi
 
 # Describe the interaction (general information)
