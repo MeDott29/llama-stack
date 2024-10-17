@@ -37,7 +37,12 @@ check_and_get_ip() {
   interface="${interface//@*/}" #Remove @ and anything after it.
 
   #Check if interface exists and is up *before* attempting to get the IP address
-  if ! check_interface "$interface"; then
+  if ! ip link show dev "$interface" &> /dev/null; then
+    echo "Error: Interface '$interface' not found."
+    return
+  fi
+  if ! ip link show dev "$interface" | grep -q "state UP"; then
+    echo "Warning: Interface '$interface' is DOWN. Skipping IP address retrieval."
     return
   fi
 
@@ -95,7 +100,7 @@ fi
 
 # Check Chrome OS interface (if a single interface was selected)
 if [[ -n "$interface" ]]; then
-  check_and_get_ip "$interface" # Moved check_interface call here
+  check_and_get_ip "$interface" # Removed check_interface call
 fi
 
 
