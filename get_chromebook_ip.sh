@@ -5,45 +5,6 @@ list_interfaces() {
   ip link show | awk '/^[0-9]+: / {print $2}'
 }
 
-# Get interface name. If only one interface (excluding loopback) is found, use that. Otherwise, prompt the user with a list of available interfaces.
-available_interfaces=$(list_interfaces)
-if [[ $(echo "$available_interfaces" | wc -l) -eq 1 ]]; then
-  interface=$(echo "$available_interfaces")
-elif [[ $(echo "$available_interfaces" | wc -l) -eq 0 ]]; then
-  echo "Error: No interfaces found."
-  exit 1
-else
-  echo "Available interfaces:"
-  i=1
-  for interface in $available_interfaces; do
-    echo "$i. $interface"
-    i=$((i+1))
-  done
-  read -p "Enter the number of the interface for the Chrome OS connection (or press Enter to skip): " interface_num
-
-  if [[ -z "$interface_num" ]]; then
-    echo "No interface selected. Testing all interfaces..."
-    for interface in $available_interfaces; do
-      check_and_get_ip "$interface"
-    done
-    exit 0
-  fi
-
-  if [[ ! "$interface_num" =~ ^[0-9]+$ ]] || [[ "$interface_num" -gt "$i" ]] || [[ "$interface_num" -lt 1 ]]; then
-    echo "Invalid interface number."
-    exit 1
-  fi
-
-  interface=$(echo "$available_interfaces" | awk -v num="$interface_num" 'NR==num {print}')
-
-  #Check if interface exists
-  if ! ip link show dev "$interface" &> /dev/null; then
-    echo "Error: Interface '$interface' not found."
-    exit 1
-  fi
-fi
-
-
 # Function to check if an IP address is private.  Improved regex.
 is_private_ip() {
   ip="$1"
@@ -85,6 +46,45 @@ check_and_get_ip() {
   echo "Chrome OS IP Address for interface '$interface': $chromeos_ip"
   echo ""
 }
+
+
+# Get interface name. If only one interface (excluding loopback) is found, use that. Otherwise, prompt the user with a list of available interfaces.
+available_interfaces=$(list_interfaces)
+if [[ $(echo "$available_interfaces" | wc -l) -eq 1 ]]; then
+  interface=$(echo "$available_interfaces")
+elif [[ $(echo "$available_interfaces" | wc -l) -eq 0 ]]; then
+  echo "Error: No interfaces found."
+  exit 1
+else
+  echo "Available interfaces:"
+  i=1
+  for interface in $available_interfaces; do
+    echo "$i. $interface"
+    i=$((i+1))
+  done
+  read -p "Enter the number of the interface for the Chrome OS connection (or press Enter to skip): " interface_num
+
+  if [[ -z "$interface_num" ]]; then
+    echo "No interface selected. Testing all interfaces..."
+    for interface in $available_interfaces; do
+      check_and_get_ip "$interface"
+    done
+    exit 0
+  fi
+
+  if [[ ! "$interface_num" =~ ^[0-9]+$ ]] || [[ "$interface_num" -gt "$i" ]] || [[ "$interface_num" -lt 1 ]]; then
+    echo "Invalid interface number."
+    exit 1
+  fi
+
+  interface=$(echo "$available_interfaces" | awk -v num="$interface_num" 'NR==num {print}')
+
+  #Check if interface exists
+  if ! ip link show dev "$interface" &> /dev/null; then
+    echo "Error: Interface '$interface' not found."
+    exit 1
+  fi
+fi
 
 
 # Check Chrome OS interface (if a single interface was selected)
