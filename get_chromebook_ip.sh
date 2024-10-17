@@ -18,23 +18,23 @@ check_and_get_ip() {
   local interface="$1"
   echo "Checking interface: $interface"
 
-  # Remove trailing colon and @ifX suffix BEFORE the interface check
+  # Remove trailing colon and @ifX suffix for IP retrieval
   local interface_short="${interface%%:*}" # Remove trailing colon
   interface_short="${interface_short//@*/}" #Remove @ and anything after it.
 
-  #Check if interface exists and is up
-  if ! ip link show dev "$interface_short" &> /dev/null; then #Corrected line
+  #Check if interface exists and is up using the FULL interface name
+  if ! ip link show dev "$interface" &> /dev/null; then
     echo "Error: Interface '$interface' not found."
     return
   fi
-  if ! ip link show dev "$interface_short" | grep -q "state UP"; then #Corrected line
+  if ! ip link show dev "$interface" | grep -q "state UP"; then
     echo "Warning: Interface '$interface' is DOWN. Skipping IP address retrieval."
     return
   fi
 
-
-  ip -4 addr show dev "$interface"
-  chromeos_ip=$(ip -4 addr show dev "$interface" | grep "inet\b" | grep -v 127.0.0.1 | awk '{print $2}' | cut -d/ -f1)
+  # Retrieve IP address using the SHORTENED interface name
+  ip -4 addr show dev "$interface_short"
+  chromeos_ip=$(ip -4 addr show dev "$interface_short" | grep "inet\b" | grep -v 127.0.0.1 | awk '{print $2}' | cut -d/ -f1)
 
   if [ -z "$chromeos_ip" ]; then
     echo "Warning: Could not determine Chrome OS IP address for interface '$interface'."
