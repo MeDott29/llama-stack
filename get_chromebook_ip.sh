@@ -23,11 +23,11 @@ check_and_get_ip() {
   interface_short="${interface_short//@*/}" #Remove @ and anything after it.
 
   #Check if interface exists and is up
-  if ! ip link show dev "$interface" &> /dev/null; then
+  if ! ip link show dev "$interface_short" &> /dev/null; then #Corrected line
     echo "Error: Interface '$interface' not found."
     return
   fi
-  if ! ip link show dev "$interface" | grep -q "state UP"; then
+  if ! ip link show dev "$interface_short" | grep -q "state UP"; then #Corrected line
     echo "Warning: Interface '$interface' is DOWN. Skipping IP address retrieval."
     return
   fi
