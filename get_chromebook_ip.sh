@@ -18,7 +18,11 @@ check_and_get_ip() {
   local interface="$1"
   echo "Checking interface: $interface"
 
-  #Check if interface exists and is up *before* attempting to get the IP address
+  # Remove trailing colon and @ifX suffix BEFORE the interface check
+  interface="${interface%%:*}" # Remove trailing colon
+  interface="${interface//@*/}" #Remove @ and anything after it.
+
+  #Check if interface exists and is up
   if ! ip link show dev "$interface" &> /dev/null; then
     echo "Error: Interface '$interface' not found."
     return
@@ -28,9 +32,6 @@ check_and_get_ip() {
     return
   fi
 
-  # Remove trailing colon and @ifX suffix AFTER the interface check
-  interface="${interface%%:*}" # Remove trailing colon
-  interface="${interface//@*/}" #Remove @ and anything after it.
 
   ip -4 addr show dev "$interface"
   chromeos_ip=$(ip -4 addr show dev "$interface" | grep "inet\b" | grep -v 127.0.0.1 | awk '{print $2}' | cut -d/ -f1)
