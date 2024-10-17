@@ -18,6 +18,12 @@ else
     echo "Error: No interface name entered."
     exit 1
   fi
+  #Check if interface exists
+  if ! ip link show dev "$interface" &> /dev/null; then
+    echo "Error: Interface '$interface' not found."
+    exit 1
+  fi
+
 fi
 
 
