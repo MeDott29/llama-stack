@@ -43,8 +43,8 @@ fi
 
 echo "Chrome OS IP Address: $chromeos_ip"
 
-# Get Linux VM IP address.  Assume a different interface for the VM (e.g., docker0)
-vm_interface="docker0" # Change this if your VM uses a different interface
+# Get Linux VM IP address.  Assume a different interface for the VM (e.g., eth1)
+vm_interface="eth1" # Change this if your VM uses a different interface
 
 # Check if the VM interface exists and is UP
 if ! check_interface "$vm_interface"; then
@@ -65,5 +65,5 @@ fi
 # Describe the interaction (general information)
 echo ""
 echo "Interaction between Chrome OS and Linux VM:"
-echo "The Linux VM runs in a container, isolated from the Chrome OS network. They communicate through a virtual network bridge created by Chrome OS. Chrome OS manages network access for the VM, assigning it an IP address on the virtual network. The VM can access the internet through this virtual network, and potentially communicate with Chrome OS using network protocols (e.g., SSH, if enabled)."
+echo "The Linux VM runs in a virtual machine environment, potentially isolated from the Chrome OS network.  They communicate through a virtual network bridge or other networking configuration. Chrome OS manages network access for the VM, assigning it an IP address on the virtual network. The VM can access the internet through this virtual network, and potentially communicate with Chrome OS using network protocols (e.g., SSH, if enabled)."
 echo "Note: The Linux VM's IP address is typically only accessible from within the VM itself or from other VMs on the same virtual network. It's not directly routable on the external network."
