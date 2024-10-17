@@ -23,7 +23,7 @@ echo "ip -4 addr show dev \"$interface\" output:"
 ip -4 addr show dev "$interface"
 chromeos_ip=$(ip -4 addr show dev "$interface" | grep "inet\b" | grep -v 127.0.0.1 | awk '{print $2}' | cut -d/ -f1)
 
-if [ -z "$chromeos_ip" ] || ! is_private_ip "$chromeos_ip"; then
+if [ -z "$chromeos_ip" ]; then
   echo "Error: Could not determine Chrome OS IP address for interface '$interface'. Check your network configuration or specify the correct interface."
   exit 1
 fi
