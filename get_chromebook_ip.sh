@@ -1,11 +1,20 @@
 #!/bin/bash
 
-# Get interface name as argument, default to eth0 if only one interface is found, otherwise prompt the user.
-if [[ $(ip link show | wc -l) -eq 2 ]]; then # Check if only one interface exists (excluding loopback)
-  interface=$(ip link show | grep -oP '(?<=dev\s)\w+' | head -n 1)
+# Function to list available interfaces, excluding loopback
+list_interfaces() {
+  ip link show | awk '/^[0-9]+: / {print $2}'
+}
+
+# Get interface name.  If only one interface (excluding loopback) is found, use that. Otherwise, prompt the user with a list of available interfaces.
+available_interfaces=$(list_interfaces)
+if [[ $(echo "$available_interfaces" | wc -l) -eq 1 ]]; then
+  interface=$(echo "$available_interfaces")
 else
-  read -p "Enter the interface name for the Chrome OS connection (e.g., eth0): " interface
+  echo "Available interfaces:"
+  echo "$available_interfaces"
+  read -p "Enter the interface name for the Chrome OS connection: " interface
 fi
+
 
 # Function to check if an IP address is private.  Improved regex.
 is_private_ip() {
