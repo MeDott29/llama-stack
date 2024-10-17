@@ -16,11 +16,11 @@ is_private_ip() {
 # Check if the interface exists and is UP
 check_interface() {
   local interface="$1"
-  if ! ip link show dev "$interface" &> /dev/null; then
+  if ! ip link show dev "${interface%:*}" &> /dev/null; then
     echo "Error: Interface '$interface' not found."
     return 1
   fi
-  if ! ip link show dev "$interface" | grep "state UP"; then
+  if ! ip link show dev "${interface%:*}" | grep "state UP"; then
     echo "Warning: Interface '$interface' is DOWN. Skipping IP address retrieval."
     return 1
   fi
@@ -35,8 +35,8 @@ check_and_get_ip() {
   fi
 
   echo "Checking interface: $interface"
-  ip -4 addr show dev "$interface"
-  chromeos_ip=$(ip -4 addr show dev "$interface" | grep "inet\b" | grep -v 127.0.0.1 | awk '{print $2}' | cut -d/ -f1)
+  ip -4 addr show dev "${interface%:*}"
+  chromeos_ip=$(ip -4 addr show dev "${interface%:*}" | grep "inet\b" | grep -v 127.0.0.1 | awk '{print $2}' | cut -d/ -f1)
 
   if [ -z "$chromeos_ip" ]; then
     echo "Warning: Could not determine Chrome OS IP address for interface '$interface'."
@@ -80,7 +80,7 @@ else
   interface=$(echo "$available_interfaces" | awk -v num="$interface_num" 'NR==num {print}')
 
   #Check if interface exists
-  if ! ip link show dev "$interface" &> /dev/null; then
+  if ! ip link show dev "${interface%:*}" &> /dev/null; then
     echo "Error: Interface '$interface' not found."
     exit 1
   fi
