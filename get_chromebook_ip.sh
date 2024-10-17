@@ -13,7 +13,7 @@ else
   echo "Available interfaces:"
   echo "$available_interfaces"
   read -p "Enter the interface name for the Chrome OS connection: " interface
-  # Check if the user entered a value
+  # Check if the user entered a value AFTER the read command
   if [[ -z "$interface" ]]; then
     echo "Error: No interface name entered."
     exit 1
