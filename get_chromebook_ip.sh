@@ -22,7 +22,7 @@ check_interface() {
     echo "Error: Interface '$1' not found."
     return 1
   fi
-  if ! ip link show dev "$interface" | grep "state UP"; then
+  if ! ip link show dev "$interface" | grep -q "state UP"; then # Use -q for quiet grep and check if "state UP" is present
     echo "Warning: Interface '$1' is DOWN. Skipping IP address retrieval."
     return 1
   fi
