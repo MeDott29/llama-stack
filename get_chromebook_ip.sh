@@ -8,13 +8,26 @@ is_private_ip() {
   ip="$1"
   [[ "$ip" =~ ^10\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}$ ]] || \
   [[ "$ip" =~ ^172\.(1[6-9]|2[0-9]|3[0-1])\.[0-9]{1,3}\.[0-9]{1,3}$ ]] || \
-  [[ "$ip" =~ ^192\.168\.[0-9]{1,3}\.[0-9]{1,3}$ ]] || \
-  [[ "$ip" =~ ^127\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}$ ]] #Added loopback check
+  [[ "$ip" =~ ^192\.168\.[0-9]{1,3}\.[0-9]{1,3}$ ]]
 }
 
-# Check if the interface exists
-if ! ip link show dev "$interface" &> /dev/null; then
-  echo "Error: Interface '$interface' not found. Check your network configuration or specify the correct interface."
+# Check if the interface exists and is UP
+check_interface() {
+  local interface="$1"
+  if ! ip link show dev "$interface" &> /dev/null; then
+    echo "Error: Interface '$interface' not found."
+    return 1
+  fi
+  if ! ip link show dev "$interface" | grep "state UP"; then
+    echo "Warning: Interface '$interface' is DOWN."
+    return 1
+  fi
+  return 0
+}
+
+
+# Check Chrome OS interface
+if ! check_interface "$interface"; then
   exit 1
 fi
 
@@ -24,7 +37,7 @@ ip -4 addr show dev "$interface"
 chromeos_ip=$(ip -4 addr show dev "$interface" | grep "inet\b" | grep -v 127.0.0.1 | awk '{print $2}' | cut -d/ -f1)
 
 if [ -z "$chromeos_ip" ]; then
-  echo "Error: Could not determine Chrome OS IP address for interface '$interface'. Check your network configuration or specify the correct interface."
+  echo "Error: Could not determine Chrome OS IP address for interface '$interface'."
   exit 1
 fi
 
@@ -33,9 +46,9 @@ echo "Chrome OS IP Address: $chromeos_ip"
 # Get Linux VM IP address.  Assume a different interface for the VM (e.g., docker0)
 vm_interface="docker0" # Change this if your VM uses a different interface
 
-# Check if the interface exists
-if ! ip link show dev "$vm_interface" &> /dev/null; then
-  echo "Warning: Interface '$vm_interface' not found. Check your Linux VM network configuration or specify the correct interface."
+# Check if the VM interface exists and is UP
+if ! check_interface "$vm_interface"; then
+  echo "Warning: Skipping Linux VM IP address check because interface '$vm_interface' is not found or is DOWN."
 else
   # Add debugging output
   echo "ip -4 addr show dev \"$vm_interface\" output:"
@@ -43,7 +56,7 @@ else
   linux_ip=$(ip -4 addr show dev "$vm_interface" | grep "inet\b" | grep -v 127.0.0.1 | awk '{print $2}' | cut -d/ -f1)
 
   if [ -z "$linux_ip" ] || ! is_private_ip "$linux_ip"; then
-    echo "Warning: Could not determine Linux VM IP address for interface '$vm_interface'. Check your Linux VM network configuration or specify the correct interface."
+    echo "Warning: Could not determine Linux VM IP address for interface '$vm_interface'."
   else
     echo "Linux VM IP Address: $linux_ip"
   fi
