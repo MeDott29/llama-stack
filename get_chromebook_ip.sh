@@ -13,28 +13,10 @@ is_private_ip() {
   [[ "$ip" =~ ^192\.168\.[0-9]{1,3}\.[0-9]{1,3}$ ]]
 }
 
-# Check if the interface exists and is UP
-check_interface() {
-  local interface="$1"
-  interface="${interface%%:*}" # Remove trailing colon
-  interface="${interface//@*/}" #Remove @ and anything after it.
-  if ! ip link show dev "$interface" &> /dev/null; then
-    echo "Error: Interface '$1' not found."
-    return 1
-  fi
-  if ! ip link show dev "$interface" | grep -q "state UP"; then # Use -q for quiet grep and check if "state UP" is present
-    echo "Warning: Interface '$1' is DOWN. Skipping IP address retrieval."
-    return 1
-  fi
-  return 0
-}
-
 # Function to check and get IP for a given interface
 check_and_get_ip() {
   local interface="$1"
   echo "Checking interface: $interface"
-  interface="${interface%%:*}" # Remove trailing colon
-  interface="${interface//@*/}" #Remove @ and anything after it.
 
   #Check if interface exists and is up *before* attempting to get the IP address
   if ! ip link show dev "$interface" &> /dev/null; then
@@ -45,6 +27,9 @@ check_and_get_ip() {
     echo "Warning: Interface '$interface' is DOWN. Skipping IP address retrieval."
     return
   fi
+
+  interface="${interface%%:*}" # Remove trailing colon
+  interface="${interface//@*/}" #Remove @ and anything after it.
 
   ip -4 addr show dev "$interface"
   chromeos_ip=$(ip -4 addr show dev "$interface" | grep "inet\b" | grep -v 127.0.0.1 | awk '{print $2}' | cut -d/ -f1)
@@ -91,7 +76,7 @@ else
   interface=$(echo "$available_interfaces" | awk -v num="$interface_num" 'NR==num {print}')
 
   #Check if interface exists
-  if ! ip link show dev "${interface%:*}" &> /dev/null; then
+  if ! ip link show dev "$interface" &> /dev/null; then
     echo "Error: Interface '$interface' not found."
     exit 1
   fi
@@ -100,7 +85,7 @@ fi
 
 # Check Chrome OS interface (if a single interface was selected)
 if [[ -n "$interface" ]]; then
-  check_and_get_ip "$interface" # Removed check_interface call
+  check_and_get_ip "$interface"
 fi
 
 
