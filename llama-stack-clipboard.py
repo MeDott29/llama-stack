@@ -17,6 +17,7 @@ from threading import Thread, Lock
 from queue import Queue, Empty as QueueEmpty
 import signal
 from experimental.novelty_tracker import NoveltyTracker, PERFORMANCE_CONFIG as NOVELTY_CONFIG
+import yaml
 
 # Configuration
 ASSETS_DIR = os.path.expanduser("~/Desktop/llama-pile/assets")
@@ -30,6 +31,7 @@ PERFORMANCE_CONFIG = {
     "poll_interval": 0.5,
     "max_queue_size": 100,
     "min_content_length": 10,
+    
     "concurrent_agents": 2,
     "history_size": 1000
 }
@@ -42,6 +44,12 @@ AI_CONFIG = {
     "provider": "meta-reference",
     "model_id": "meta-llama/Llama-3.2-1B-Instruct",
     "environment": "single-node",
+    "fallback": {
+        "enabled": True,
+        "retry_attempts": 3,
+        "retry_delay": 5,
+        "error_message": "Llama Stack server unavailable - please install required dependencies (pip install pyyaml) and ensure server is running"
+    },
     "system_message": "You are a poetic assistant, skilled in explaining complex programming concepts with creative flair.",
     "inference_params": {
         "sampling_params": {
@@ -131,63 +139,68 @@ clipboard_lock = Lock()
 last_content_hash = None
 
 def query_llama_stack(prompt: str) -> dict:
-    """Query Llama Stack with enhanced stream handling and loop prevention"""
-    try:
-        response = client.inference.chat_completion(
-            model_id=AI_CONFIG["model_id"],
-            messages=[
-                {
-                    "role": "system",
-                    "content": AI_CONFIG["system_message"]
-                },
-                {
-                    "role": "user",
-                    "content": prompt + "\n\nIMPORTANT: Keep responses concise. No repetition."
-                }
-            ],
-            **AI_CONFIG["inference_params"]
-        )
-        
-        full_response = ""
-        seen_facts = set()  # Track unique facts to prevent loops
-        
+    """Query Llama Stack with enhanced error handling and fallback"""
+    for attempt in range(AI_CONFIG["fallback"]["retry_attempts"]):
         try:
-            for chunk in response:
-                # Handle both streaming and non-streaming responses
-                if hasattr(chunk, 'event') and hasattr(chunk.event, 'delta'):
-                    new_text = chunk.event.delta
-                elif hasattr(chunk, 'choices') and chunk.choices:
-                    new_text = chunk.choices[0].message.content
-                else:
-                    continue
+            response = client.inference.chat_completion(
+                model_id=AI_CONFIG["model_id"],
+                messages=[
+                    {
+                        "role": "system",
+                        "content": AI_CONFIG["system_message"]
+                    },
+                    {
+                        "role": "user",
+                        "content": prompt + "\n\nIMPORTANT: Keep responses concise. No repetition."
+                    }
+                ],
+                **AI_CONFIG["inference_params"]
+            )
+            
+            full_response = ""
+            seen_facts = set()  # Track unique facts to prevent loops
+            
+            try:
+                for chunk in response:
+                    # Handle both streaming and non-streaming responses
+                    if hasattr(chunk, 'event') and hasattr(chunk.event, 'delta'):
+                        new_text = chunk.event.delta
+                    elif hasattr(chunk, 'choices') and chunk.choices:
+                        new_text = chunk.choices[0].message.content
+                    else:
+                        continue
+                        
+                    # Prevent repetitive content
+                    if new_text not in seen_facts:
+                        seen_facts.add(new_text)
+                        full_response += new_text
                     
-                # Prevent repetitive content
-                if new_text not in seen_facts:
-                    seen_facts.add(new_text)
-                    full_response += new_text
+                    # Break if response gets too long
+                    if len(full_response) > 1000:  # Reasonable limit
+                        break
+                        
+            except Exception as stream_error:
+                print(f"{Fore.YELLOW}[Stream Warning] {str(stream_error)}{Style.RESET_ALL}")
                 
-                # Break if response gets too long
-                if len(full_response) > 1000:  # Reasonable limit
-                    break
-                    
-        except Exception as stream_error:
-            print(f"{Fore.YELLOW}[Stream Warning] {str(stream_error)}{Style.RESET_ALL}")
-            
-        return {
-            'response': full_response.strip(),
-            'metadata': {
-                'provider': AI_CONFIG["provider"],
-                'model': AI_CONFIG["model_id"],
-                'timestamp': datetime.now().isoformat()
+            return {
+                'response': full_response.strip(),
+                'metadata': {
+                    'provider': AI_CONFIG["provider"],
+                    'model': AI_CONFIG["model_id"],
+                    'timestamp': datetime.now().isoformat()
+                }
             }
-        }
             
-    except Exception as e:
-        print(f"{Fore.RED}[Llama Stack Error] {str(e)}{Style.RESET_ALL}")
-        return {
-            'response': "Error: Failed to generate response",
-            'metadata': {'error': str(e)}
-        }
+        except Exception as e:
+            print(f"{Fore.YELLOW}[Attempt {attempt + 1}] Llama Stack Error: {str(e)}{Style.RESET_ALL}")
+            if attempt < AI_CONFIG["fallback"]["retry_attempts"] - 1:
+                time.sleep(AI_CONFIG["fallback"]["retry_delay"])
+            else:
+                print(f"{Fore.RED}{AI_CONFIG['fallback']['error_message']}{Style.RESET_ALL}")
+                return {
+                    'response': "Error: Llama Stack server unavailable",
+                    'metadata': {'error': str(e)}
+                }
 
 def analyze_content_type(content: dict) -> str:
     """Detect content type and characteristics"""
@@ -434,3 +447,7 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+"""
+docker run -it -p 5001:5001 --gpus all -v ~/.llama:/root/.llama llamastack/distribution-meta-reference-gpu --port 5001 --env INFERENCE_MODEL=meta-llama/Llama-3.2-1B-Instruct
+"""
